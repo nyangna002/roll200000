@@ -11,48 +11,44 @@
         h2 { margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; }
         textarea { width: 100%; height: 600px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
         .preview-section { width: 340px; display: flex; flex-direction: column; }
+        
+        /* 💡 미리보기 영역: 내부의 모든 것을 중앙으로 정렬 */
         .preview-area { background: #f3f3f3; padding: 30px 5px; border-radius: 4px; height: 700px; border: 1px solid #ddd; overflow-y: auto; overflow-x: auto; position: relative; }
         .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
         
+        #output { 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* 가로축 중앙 정렬 */
+        }
+        
+        /* 💡 개별 메시지 라인 보정 */
+        .msg-line { 
+            margin: 15px 0; 
+            display: flex; /* Flexbox 적용 */
+            justify-content: center; /* 자식 요소들을 가로 중앙으로 */
+            align-items: center; 
+            flex-wrap: nowrap; /* 재생바가 꺾이지 않게 함 */
+            width: 100%; 
+            font-size: 0; 
+        }
+        
+        /* 💡 수식에서 생성된 박스(span, div) 정렬 강제 */
+        .msg-line > span, .msg-line > div { 
+            font-size: 11px; 
+            display: inline-block !important; 
+            float: none !important; /* 좌측 정렬 방해 요소 제거 */
+            margin: 0 !important; /* 개별 마진 초기화로 정렬 일치 */
+        }
+        
+        img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 5px auto; display: block; }
+
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
         button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; transition: 0.2s; flex: 1; min-width: 100px; }
         .copy-raw-btn { background: #8324FF; color: white; }
         .export-txt-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
-        
-        /* 💡 중앙 정렬 핵심 보정 */
-        #output { 
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        .msg-line { 
-            margin: 15px 0; 
-            display: block; 
-            width: 100%; 
-            text-align: center; /* 내부 인라인 요소들을 중앙으로 */
-            white-space: nowrap; /* 재생바 등이 아래로 꺾이지 않게 보호 */
-            font-size: 0; /* 박스 사이 미세 여백 제거 */
-        }
-        
-        /* 롤20 수식이 변환된 모든 span과 div에 공통 적용 */
-        .msg-line > span, .msg-line > div { 
-            font-size: 11px; 
-            vertical-align: top; 
-            display: inline-block !important; /* 무조건 한 줄에 정렬되도록 강제 */
-            float: none !important; /* 정렬 방해 요소 제거 */
-            text-align: center;
-        }
-        
-        img { 
-            max-width: 100% !important; 
-            height: auto !important; 
-            border-radius: 2px; 
-            margin: 5px auto; 
-            display: block; 
-        }
 
         @media (max-width: 900px) {
             .container { flex-direction: column; width: 100%; padding: 15px; }
@@ -119,7 +115,7 @@
                     if (oc > cc) s += ')'.repeat(oc - cc);
                     if (!s.endsWith(';')) s += ';';
 
-                    // 💡 여기서 display: block이 수식에 들어있더라도 무시하고 인라인 배치를 유지하게 함 (중앙 정렬을 위해)
+                    // 중앙 정렬을 방해하는 display: block 등을 제어하기 위해 tag 생성 로직 유지
                     const tag = s.includes('display:block') || s.includes('display: block') ? 'div' : 'span';
                     
                     return `<${tag} style="${s} box-sizing: border-box;">${content}</${tag}>`;
@@ -136,9 +132,8 @@
             const blob = new Blob([formulaContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const date = new Date().toISOString().slice(0, 10);
             a.href = url;
-            a.download = `Macro_${date}.txt`;
+            a.download = `Macro_${new Date().toISOString().slice(0, 10)}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
