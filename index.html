@@ -31,7 +31,7 @@
             width: 100%;
             word-break: break-all;
             line-height: 1.6;
-            font-size: 14px; /* 일반 텍스트 기본 크기 */
+            font-size: 14px;
         }
 
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -45,7 +45,7 @@
     <div class="container">
         <div class="input-section">
             <h2>🛠️ Roll20 매크로 작업실</h2>
-            <textarea id="input" placeholder="매크로 수식을 입력하세요..."></textarea>
+            <textarea id="input" placeholder="수식을 입력하세요..."></textarea>
             <div class="btn-group">
                 <button class="copy-raw-btn" onclick="copyRaw()">원본 복사</button>
                 <button class="export-txt-btn" onclick="exportFormula()">수식 (.txt) 내보내기</button>
@@ -53,7 +53,7 @@
             </div>
         </div>
         <div class="preview-section">
-            <div class="preview-label">Live Preview (Clean View)</div>
+            <div class="preview-label">Live Preview</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
@@ -77,23 +77,22 @@
                 let p = line.trim();
                 if (!p) return '<div style="height: 15px;"></div>';
                 
-                // 1. 명령어(/desc, /em 등) 제거
+                // 1. /desc, /em 등 명령어 강제 제거
                 p = p.replace(/^\/\w+\s+/, '');
 
-                // 2. 수식 변환 (스타일은 유지, 마크다운 기호는 무시)
-                p = p.replace(/\[([\s\S]*?)\]\(#?"\s+style="([\s\S]*?)"\)/g, (match, content, style) => {
+                // 2. 수식 변환 로직 (정규식 대폭 강화)
+                // [텍스트](...style="...") 형태를 찾되, 괄호 안의 복잡한 문자열도 인식하도록 함
+                p = p.replace(/\[([\s\S]*?)\]\([\s\S]*?style="([\s\S]*?)"\)/g, (match, content, style) => {
                     // ?{...} 매크로 입력창 부분을 일반 텍스트로 치환
                     let cleanContent = content.replace(/\?\{([^|}]*).*?\}/g, '$1');
                     if (!cleanContent.trim()) cleanContent = '　';
                     
+                    // 스타일 적용 (font-size, text-shadow 등)
                     return `<span style="${style}">${cleanContent}</span>`;
                 });
 
-                // 3. 이미지 주소 단독 처리 (깡주소만 이미지로)
-                const imgPattern = /^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i;
-                if (imgPattern.test(p)) {
-                    return `<div class="msg-line"><img src="${p}" style="max-width:100%; height:auto; display:block; margin:10px 0;"></div>`;
-                }
+                // 3. 변환 후에도 남아있는 불필요한 마크다운 기호 제거 (선택 사항)
+                // p = p.replace(/\*\*/g, ''); 
 
                 return `<div class="msg-line">${p}</div>`;
             }).join('');
@@ -101,16 +100,12 @@
 
         function exportFormula() {
             const formulaContent = input.value;
-            if (!formulaContent.trim()) { alert("내보낼 수식이 없습니다."); return; }
             const blob = new Blob([formulaContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `Macro_${new Date().toISOString().slice(0, 10)}.txt`;
-            document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
 
         function copyRaw() { 
