@@ -2,40 +2,44 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Roll20 매크로 작업실 (명령어 스타일 지원)</title>
+    <title>Roll20 매크로 작업실</title>
     <style>
         body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
         .container { width: 95%; max-width: 1200px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
         .input-section { flex: 1; display: flex; flex-direction: column; }
         textarea { width: 100%; height: 650px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; resize: none; outline: none; }
         
+        /* 💡 롤20 채팅창 실사 사이즈 반영 (300px) */
         .preview-section { width: 340px; display: flex; flex-direction: column; flex-shrink: 0; }
-        .preview-area { background: #f3f3f3; padding: 30px 10px; border-radius: 4px; height: 680px; border: 1px solid #ddd; overflow-y: auto; overflow-x: hidden; }
+        .preview-area { 
+            background: #f3f3f3; padding: 30px 10px; border-radius: 4px; height: 680px; border: 1px solid #ddd; 
+            overflow-y: auto; overflow-x: hidden; position: relative;
+        }
         
-        #output { width: 100%; display: flex; flex-direction: column; }
+        #output { width: 100%; display: flex; flex-direction: column; align-items: center; }
         
-        /* 💡 Roll20 명령어별 스타일 정의 */
-        .msg-line { margin-bottom: 10px; width: 100%; font-size: 13px; line-height: 1.4; word-break: break-all; padding: 5px; border-radius: 3px; box-sizing: border-box; }
-        
-        /* /desc 스타일 */
-        .msg-desc { background: #fdf2d5; border: 1px solid #e6dbb9; font-weight: bold; font-style: italic; color: #333; }
-        
-        /* /em, /emas 스타일 */
-        .msg-emote { font-style: italic; color: #000; font-weight: bold; background: #eee; }
-        
-        /* /as 스타일 */
-        .msg-as { color: #222; border-left: 3px solid #8324FF; padding-left: 8px; background: #fff; }
+        .msg-line { 
+            margin-bottom: 10px; width: 100%; font-size: 13px; line-height: 1.4; color: #333; word-break: break-all;
+        }
 
-        /* 수식/이미지 레이아웃 */
-        .formula-group { display: inline-block; white-space: nowrap; font-size: 0; vertical-align: top; }
-        .wide-wrapper { display: inline-block; transform-origin: left top; transform: scale(0.68); margin-right: -32%; margin-bottom: -15px; }
-        .formula-group > * { font-size: 11px; display: inline-block; vertical-align: top; letter-spacing: normal; }
+        /* 💡 수식 덩어리를 감싸는 보호막: 박스 사이 틈새 제거용 */
+        .formula-group { 
+            display: inline-block; white-space: nowrap; font-size: 0; vertical-align: top;
+        }
         
+        /* 💡 내용이 너무 길면(BGM 등) 깨지지 않게 자동 축소 */
+        .wide-wrapper { 
+            display: inline-block; transform-origin: left top; transform: scale(0.68); margin-right: -32%; margin-bottom: -15px;
+        }
+
+        .formula-group > * { 
+            font-size: 11px; display: inline-block; vertical-align: top; letter-spacing: normal; 
+        }
+        
+        /* 💡 일반 글자 스타일 */
         .msg-text { font-size: 13px; display: inline; vertical-align: baseline; letter-spacing: normal; }
-        .msg-text strong { font-weight: bold; }
-        .msg-text em { font-style: italic; }
-        .msg-text del { text-decoration: line-through; }
         
+        /* 이미지 스타일 */
         img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 8px auto; background: #ddd; }
 
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -43,6 +47,7 @@
         .copy-btn { background: #8324FF; color: white; }
         .export-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
+        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -57,7 +62,7 @@
             </div>
         </div>
         <div class="preview-section">
-            <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">LIVE PREVIEW (Command Styled)</div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">LIVE PREVIEW (300px)</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
@@ -66,22 +71,16 @@
         const input = document.getElementById('input');
         const output = document.getElementById('output');
 
+        // 자동 저장 및 불러오기
         window.onload = () => {
-            const saved = localStorage.getItem('r20_macro_styled_v4');
+            const saved = localStorage.getItem('r20_macro_studio_save');
             if (saved) { input.value = saved; render(); }
         };
 
         input.addEventListener('input', () => {
             render();
-            localStorage.setItem('r20_macro_styled_v4', input.value);
+            localStorage.setItem('r20_macro_studio_save', input.value);
         });
-
-        function applyMarkdown(text) {
-            return text
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                .replace(/~~(.*?)~~/g, '<del>$1</del>');
-        }
 
         function render() {
             const lines = input.value.split('\n');
@@ -89,50 +88,52 @@
                 let p = line.trim();
                 if (!p) return '<div style="height:12px;"></div>';
 
-                let lineClass = "msg-line";
-                
-                // 💡 명령어 판별 및 스타일 클래스 부여
-                if (p.toLowerCase().startsWith('/desc')) {
-                    lineClass += " msg-desc";
-                    p = p.replace(/^\/desc\s+/i, '');
-                } else if (p.toLowerCase().startsWith('/em') || p.toLowerCase().startsWith('/emas')) {
-                    lineClass += " msg-emote";
-                    p = p.replace(/^\/(?:emas|em)\s+/i, '');
-                } else if (p.toLowerCase().startsWith('/as')) {
-                    lineClass += " msg-as";
-                    // /as "이름" 패턴 유지 혹은 제거 (여기선 내용만 강조하도록 제거)
-                    p = p.replace(/^\/as\s+("[^"]*"|\S+)\s+/i, '<strong>$1:</strong> ');
-                }
+                // 1. /desc 등 명령어 제거
+                p = p.replace(/^\/\w+\s+/, '');
 
-                // 이미지 처리
+                // 2. 이미지 처리 (Imgur 깡주소 및 마크다운)
                 const imgPattern = /(https?:\/\/[^\s)]+\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s)]*)?|https?:\/\/imgur\.com\/[a-zA-Z0-9]+)/gi;
+                
+                // 마크다운 이미지 [그림](주소)
                 p = p.replace(/\[.*?\]\((https?:\/\/.*?)\)/gi, (m, url) => `<img src="${fixImgur(url)}">`);
+                
+                // 단독 이미지 주소 (수식 없는 경우만)
                 if (p.match(imgPattern) && !p.includes('style=')) {
                     p = p.replace(imgPattern, (url) => `<img src="${fixImgur(url)}">`);
                 }
 
-                // 수식 처리
+                // 3. 수식 조립 로직
                 const formulaRegex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
-                let lastIdx = 0, result = "", hasFormula = false, isWide = false;
+                let lastIdx = 0;
+                let result = "";
+                let hasFormula = false;
+                let isWide = false;
+
                 let match;
                 while ((match = formulaRegex.exec(p)) !== null) {
                     hasFormula = true;
+                    // 수식 앞 일반 텍스트
                     let before = p.substring(lastIdx, match.index);
-                    if (before) result += `<span class="msg-text">${applyMarkdown(before)}</span>`;
+                    if (before) result += `<span class="msg-text">${before}</span>`;
+
                     let content = match[1].replace(/\?\{.*?\}/g, '...');
                     let s = match[3].replace(/&#41;/g, ')').trim();
+                    
+                    // 너비가 큰 경우 축소 대상
                     if (s.includes('width') && parseInt(s.match(/width:\s*(\d+)/)?.[1] || 0) > 150) isWide = true;
+
                     const tag = s.includes('display:block') ? 'div' : 'span';
-                    result += `<${tag} style="${s}">${applyMarkdown(content)}</${tag}>`;
+                    result += `<${tag} style="${s}">${content}</${tag}>`;
                     lastIdx = formulaRegex.lastIndex;
                 }
-                result += `<span class="msg-text">${applyMarkdown(p.substring(lastIdx))}</span>`;
+                result += `<span class="msg-text">${p.substring(lastIdx)}</span>`;
 
+                // 4. 레이아웃 래핑
                 if (hasFormula) {
                     let wrapper = isWide ? '<div class="wide-wrapper">' : '<div>';
-                    return `<div class="${lineClass}">${wrapper}<div class="formula-group">${result}</div></div></div>`;
+                    return `<div class="msg-line">${wrapper}<div class="formula-group">${result}</div></div></div>`;
                 }
-                return `<div class="${lineClass}">${result}</div>`;
+                return `<div class="msg-line">${result}</div>`;
             }).join('');
         }
 
@@ -146,7 +147,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `macro_${new Date().getTime()}.txt`;
+            a.download = `macro_export_${new Date().getTime()}.txt`;
             a.click();
         }
 
@@ -157,10 +158,10 @@
         }
 
         function resetAll() {
-            if (confirm('모두 지울까요?')) {
+            if (confirm('모든 내용을 지울까요?')) {
                 input.value = '';
                 output.innerHTML = '';
-                localStorage.removeItem('r20_macro_styled_v4');
+                localStorage.removeItem('r20_macro_studio_save');
             }
         }
     </script>
