@@ -6,11 +6,9 @@
     <title>Roll20 미리보기</title>
     <style>
         body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        /* 보강: 너비 유연화 */
         .container { width: 95%; max-width: 1100px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
         .input-section { flex: 1; display: flex; flex-direction: column; }
         h2 { margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; }
-        /* 보강: 보라색 포인트 선 추가 */
         textarea { width: 100%; height: 600px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
         .preview-section { width: 340px; display: flex; flex-direction: column; }
         .preview-area { background: #f3f3f3; padding: 30px 10px; border-radius: 4px; height: 700px; border: 1px solid #ddd; overflow-y: auto; overflow-x: hidden; position: relative; }
@@ -20,12 +18,45 @@
         .copy-raw-btn { background: #8324FF; color: white; }
         .export-txt-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
-        #output { color: #333; line-height: 1.2; font-size: 14px; text-align: left; }
-        .msg-line { margin: 15px 0; display: block; clear: both; width: 100%; position: relative; white-space: nowrap; font-size: 0; }
-        .msg-line span, .msg-line div { font-size: 11px; vertical-align: top; }
-        img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 5px 0; display: block; }
+        
+        
+        #output { 
+            color: #333; 
+            line-height: 1.2; 
+            font-size: 14px; 
+            text-align: center; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .msg-line { 
+            margin: 15px 0; 
+            display: block; 
+            width: 100%; 
+            position: relative;
+            white-space: nowrap; 
+            font-size: 0; 
+            text-align: center; 
+        }
+        
+        .msg-line span, .msg-line div { 
+            font-size: 11px; 
+            vertical-align: top; 
+            display: inline-block; 
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+      
+        img { 
+            max-width: 100% !important; 
+            height: auto !important; 
+            border-radius: 2px; 
+            margin: 5px auto; 
+            display: block; 
+        }
 
-        /* 보강: 모바일 반응형 */
         @media (max-width: 900px) {
             .container { flex-direction: column; width: 100%; padding: 15px; }
             .preview-section { width: 100%; }
@@ -36,112 +67,4 @@
 <body>
     <div class="container">
         <div class="input-section">
-            <h2>Roll20 매크로</h2>
-            <textarea id="input" placeholder="입력하세요."></textarea>
-            <div class="btn-group">
-                <button class="copy-raw-btn" onclick="copyRaw()">원본 복사</button>
-                <button class="export-txt-btn" onclick="exportFormula()">수식 txt로 내보내기</button>
-                <button class="reset-btn" onclick="clearAll()">초기화</button>
-            </div>
-        </div>
-        <div class="preview-section">
-            <div class="preview-label">Roll20 예시</div>
-            <div class="preview-area"><div id="output"></div></div>
-        </div>
-    </div>
-    <script>
-        const input = document.getElementById('input');
-        const output = document.getElementById('output');
-
-        // 보강: 자동 불러오기
-        window.onload = () => {
-            const saved = localStorage.getItem('r20_macro_auto_save');
-            if (saved) { 
-                input.value = saved; 
-                convert(); 
-            }
-        };
-
-        // 보강: 자동 저장 기능 포함
-        input.addEventListener('input', () => {
-            convert();
-            localStorage.setItem('r20_macro_auto_save', input.value);
-        });
-
-        function convert() {
-            const lines = input.value.split('\n');
-            const converted = lines.map(line => {
-                let p = line.trim();
-                if (!p) return '<div style="height: 15px;"></div>';
-                p = p.replace(/^\/\w+\s+/, ''); 
-
-                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp).*?)\)/gi, '<img src="$1">');
-                
-                if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i.test(p)) {
-                    return `<div class="msg-line"><img src="${p}"></div>`;
-                }
-
-                p = p.replace(/\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g, (match, p1, p2, p3) => {
-                    let content = p1.replace(/\?\{([^|}]*).*?\}/g, '$1');
-                    if (!content.trim()) content = '　';
-
-                    let s = p3.replace(/&#41;/g, ')').replace(/&quot;/g, '"')
-                              .replace(/[\u00A0\u1680​\u180E\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
-                              .trim();
-
-                    if (s.includes('box-shadow')) {
-                        s += " margin-top: 20px; margin-bottom: 20px;";
-                    }
-
-                    const oc = (s.match(/\(/g) || []).length;
-                    const cc = (s.match(/\)/g) || []).length;
-                    if (oc > cc) s += ')'.repeat(oc - cc);
-                    if (!s.endsWith(';')) s += ';';
-
-                    const isBlock = s.includes('display:block') || s.includes('display: block');
-                    const tag = isBlock ? 'div' : 'span';
-                    
-                    return `<${tag} style="${s} box-sizing: border-box;">${content}</${tag}>`;
-                });
-
-                return `<div class="msg-line">${p}</div>`;
-            }).join('');
-            output.innerHTML = converted;
-        }
-
-        function exportFormula() {
-            const formulaContent = input.value;
-            if (!formulaContent.trim()) { alert("내보낼 코드가 없습니다."); return; }
-            const blob = new Blob([formulaContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            // 보강: 날짜 자동 포함 파일명
-            a.download = `Macro_Formula_${new Date().toISOString().slice(0, 10)}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // 보강: 복사 시 시각적 피드백 추가
-        function copyRaw() { 
-            input.select(); 
-            document.execCommand('copy'); 
-            const btn = document.querySelector('.copy-raw-btn');
-            const originalText = btn.innerText;
-            btn.innerText = "복사 완료! ✅";
-            setTimeout(() => btn.innerText = originalText, 1500);
-        }
-
-        // 보강: 자동 저장 데이터도 함께 삭제
-        function clearAll() { 
-            if(confirm("삭제합니까?")) { 
-                input.value = ''; 
-                output.innerHTML = ''; 
-                localStorage.removeItem('r20_macro_auto_save');
-            } 
-        }
-    </script>
-</body>
-</html>
+            <h2>Roll
