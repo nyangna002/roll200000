@@ -2,51 +2,80 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Roll20 매크로 작업실</title>
+    <title>Roll20 매크로 작업실 (최종 복구판)</title>
     <style>
         body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        .container { width: 95%; max-width: 1200px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
+        .container { width: 98%; max-width: 1300px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
         .input-section { flex: 1; display: flex; flex-direction: column; }
-        textarea { width: 100%; height: 600px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; resize: none; outline: none; }
+        textarea { width: 100%; height: 650px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; resize: none; outline: none; }
         
-        /* 롤20 채팅창 사이즈 고정 */
-        .preview-section { width: 320px; display: flex; flex-direction: column; flex-shrink: 0; }
+        /* 💡 미리보기 영역: 롤20 실사 사이즈 */
+        .preview-section { width: 340px; display: flex; flex-direction: column; flex-shrink: 0; }
         .preview-area { 
-            background: #f3f3f3; padding: 20px 10px; border-radius: 4px; height: 680px; border: 1px solid #ddd; 
-            overflow-y: auto; overflow-x: hidden; 
+            background: #f3f3f3; padding: 30px 10px; border-radius: 4px; height: 680px; border: 1px solid #ddd; 
+            overflow-y: auto; overflow-x: hidden; position: relative;
         }
         
-        #output { width: 100%; display: flex; flex-direction: column; }
+        #output { width: 100%; }
         
-        .msg-line { margin-bottom: 10px; width: 100%; word-break: break-all; font-size: 13px; line-height: 1.4; color: #333; }
-        .formula-line { white-space: nowrap; letter-spacing: -0.3em; display: block; width: fit-content; }
-        .scaled-wrapper { display: inline-block; transform: scale(0.68); transform-origin: left top; margin-right: -32%; margin-bottom: -10px; }
-        .formula-line > * { letter-spacing: normal; display: inline-block; vertical-align: top; }
-        .msg-text { display: inline-block; vertical-align: middle; letter-spacing: normal; }
+        .msg-line { 
+            margin-bottom: 8px; 
+            width: 100%; 
+            font-size: 13px; 
+            line-height: 1.4; 
+            color: #333; 
+            word-break: break-all;
+        }
+
+        /* 💡 수식 덩어리 보호 레이아웃 */
+        .formula-container { 
+            display: inline-block; 
+            white-space: nowrap; 
+            font-size: 0; /* 박스 사이 간격만 제거 */
+            vertical-align: top;
+            max-width: 100%;
+        }
         
-        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 8px auto; background: #eee; min-height: 50px; }
+        /* 💡 너무 긴 재생바(BGM 등) 처리 */
+        .wide-formula {
+            transform: scale(0.7);
+            transform-origin: left top;
+            margin-right: -30%;
+            margin-bottom: -15px;
+        }
+
+        .formula-container > * { 
+            font-size: 11px; /* 수식 안의 글자 크기 복구 */
+            display: inline-block; 
+            vertical-align: top; 
+            letter-spacing: normal;
+        }
         
+        .msg-text { font-size: 13px; display: inline; vertical-align: baseline; }
+        
+        /* 이미지: 어떤 상황에서도 출력 */
+        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 5px auto; background: #ddd; }
+
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
-        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; min-width: 80px; transition: 0.2s; }
-        .copy-raw-btn { background: #8324FF; color: white; }
-        .export-btn { background: #43b581; color: white; }
+        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; min-width: 100px; }
+        .copy-btn { background: #8324FF; color: white; }
+        .save-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
-        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="input-section">
-            <h2 style="font-size: 18px; margin-bottom: 10px;">🛠️ Roll20 Macro Studio</h2>
-            <textarea id="input" placeholder="매크로를 입력하면 자동으로 저장되고 미리보기가 업데이트됩니다."></textarea>
+            <h2 style="margin:0 0 10px 0;">🛠️ Roll20 Macro Studio</h2>
+            <textarea id="input" placeholder="여기에 매크로를 입력하세요..."></textarea>
             <div class="btn-group">
-                <button class="copy-raw-btn" onclick="copyRaw()">전체 복사</button>
-                <button class="export-btn" onclick="exportTxt()">텍스트 내보내기</button>
-                <button class="reset-btn" onclick="clearAll()">초기화</button>
+                <button class="copy-btn" onclick="copyToClipboard()">원본 복사</button>
+                <button class="save-btn" onclick="downloadTxt()">.txt 내보내기</button>
+                <button class="reset-btn" onclick="resetAll()">초기화</button>
             </div>
         </div>
         <div class="preview-section">
-            <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: bold;">CHAT PREVIEW</div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 5px; font-weight: bold;">LIVE PREVIEW (300px)</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
@@ -55,75 +84,72 @@
         const input = document.getElementById('input');
         const output = document.getElementById('output');
 
-        // 자동 저장 및 불러오기
+        // [1] 자동 저장 & 불러오기
         window.onload = () => {
-            const savedData = localStorage.getItem('r20_macro_data');
-            if (savedData) {
-                input.value = savedData;
-                convert();
-            }
+            const saved = localStorage.getItem('r20_macro_v2');
+            if (saved) { input.value = saved; render(); }
         };
 
         input.addEventListener('input', () => {
-            convert();
-            localStorage.setItem('r20_macro_data', input.value);
+            render();
+            localStorage.setItem('r20_macro_v2', input.value);
         });
 
-        function convert() {
+        function render() {
             const lines = input.value.split('\n');
             output.innerHTML = lines.map(line => {
                 let p = line.trim();
-                if (!p) return '<div style="height: 12px;"></div>';
-                
-                // 1. 명령어 제거
-                p = p.replace(/^\/\w+\s+/, ''); 
+                if (!p) return '<div style="height:10px;"></div>';
 
-                // 2. 이미지 처리 (확장자 없어도 imgur 주소면 허용)
-                const imgRegex = /(https?:\/\/(?:i\.)?imgur\.com\/[a-zA-Z0-9]+(?:\.[a-zA-Z]+)?)/gi;
-                if (p.match(imgRegex) && !p.includes('style=')) {
-                    return p.replace(imgRegex, (url) => {
-                        // 확장자가 없으면 .png를 붙여서 시도 (imgur 특성)
-                        let src = url.includes('.') ? url : url + '.png';
-                        return `<img src="${src}">`;
-                    });
+                // 1. 명령어 제거 (/desc 등)
+                p = p.replace(/^\/\w+\s+/, '');
+
+                // 2. 이미지 먼저 처리 (마크다운 및 깡주소)
+                // Imgur 등 모든 이미지 주소 감지
+                const urlPattern = /(https?:\/\/[^\s)]+\.(?:png|jpg|jpeg|gif|webp)(?:\?[^\s)]*)?|https?:\/\/imgur\.com\/[a-zA-Z0-9]+)/gi;
+                
+                // 마크다운 이미지 [text](url) 처리
+                p = p.replace(/\[.*?\]\((https?:\/\/.*?)\)/gi, (m, url) => {
+                    return `<img src="${formatImgur(url)}">`;
+                });
+
+                // 일반 텍스트 중 이미지 주소 처리 (수식에 포함되지 않은 경우)
+                if (p.match(urlPattern) && !p.includes('style=')) {
+                    p = p.replace(urlPattern, (url) => `<img src="${formatImgur(url)}">`);
                 }
 
-                // 3. 수식 처리
-                let result = "";
+                // 3. 수식 조립 ([텍스트](style))
                 const formulaRegex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
-                let match;
-                let lastIdx = 0;
                 let hasFormula = false;
-                let totalWidth = 0;
+                let isWide = false;
 
-                while ((match = formulaRegex.exec(p)) !== null) {
+                let converted = p.replace(formulaRegex, (match, content, link, style) => {
                     hasFormula = true;
-                    let before = p.substring(lastIdx, match.index);
-                    if (before) result += `<span class="msg-text">${before}</span>`;
-
-                    let content = match[1].replace(/\?\{[^}]+\}/g, '...');
-                    let s = match[3].replace(/&#41;/g, ')').trim();
+                    let displayContent = content.replace(/\?\{.*?\}/g, '...');
+                    let s = style.replace(/&#41;/g, ')').trim();
                     
-                    let wMatch = s.match(/width:\s*(\d+)px/);
-                    if (wMatch) totalWidth += parseInt(wMatch[1]);
+                    if (s.includes('width') && parseInt(s.match(/width:\s*(\d+)/)?.[1] || 0) > 150) isWide = true;
 
                     const tag = s.includes('display:block') ? 'div' : 'span';
-                    result += `<${tag} style="${s}">${content}</${tag}>`;
-                    lastIdx = formulaRegex.lastIndex;
-                }
-                result += `<span class="msg-text">${p.substring(lastIdx)}</span>`;
+                    return `<${tag} style="${s}">${displayContent}</${tag}>`;
+                });
 
+                // 4. 최종 레이아웃 결정
                 if (hasFormula) {
-                    if (totalWidth > 280) {
-                        return `<div class="msg-line"><div class="scaled-wrapper"><div class="formula-line">${result}</div></div></div>`;
-                    }
-                    return `<div class="msg-line"><div class="formula-line">${result}</div></div>`;
+                    let wrapperClass = isWide ? "formula-container wide-formula" : "formula-container";
+                    return `<div class="msg-line"><div class="${wrapperClass}">${converted}</div></div>`;
+                } else {
+                    return `<div class="msg-line">${converted}</div>`;
                 }
-                return `<div class="msg-line">${result}</div>`;
             }).join('');
         }
 
-        function exportTxt() {
+        function formatImgur(url) {
+            if (url.includes('imgur.com') && !url.includes('.')) return url + '.png';
+            return url;
+        }
+
+        function downloadTxt() {
             const blob = new Blob([input.value], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -132,17 +158,17 @@
             a.click();
         }
 
-        function copyRaw() {
+        function copyToClipboard() {
             input.select();
             document.execCommand('copy');
-            alert('클립보드에 복사되었습니다.');
+            alert('복사 완료!');
         }
 
-        function clearAll() {
-            if(confirm('내용을 지울까요?')) {
+        function resetAll() {
+            if (confirm('모든 내용을 삭제할까요?')) {
                 input.value = '';
                 output.innerHTML = '';
-                localStorage.removeItem('r20_macro_data');
+                localStorage.removeItem('r20_macro_v2');
             }
         }
     </script>
