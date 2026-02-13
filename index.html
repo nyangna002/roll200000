@@ -34,20 +34,21 @@
             align-items: center;
         }
         
+        /* 💡 수정된 부분: font-size를 0에서 14px로 변경 */
         .msg-line { 
             margin: 0 auto 15px auto; 
             display: block; 
             width: fit-content; 
-            /* 💡 수정된 부분: 0이었던 폰트 사이즈를 기본 크기로 변경하여 '의'가 보이게 함 */
             font-size: 14px; 
-            text-align: left;
+            text-align: left; 
         }
         
+        /* 💡 추가된 부분: 수식 내부의 텍스트가 아닌 바깥 글자('의')의 정렬을 맞춤 */
         .msg-line > span, .msg-line > div { 
-            /* 수식 내부 폰트 사이즈는 수식 자체 설정을 따르도록 유지 */
+            font-size: 11px; 
             letter-spacing: normal;
             word-spacing: normal;
-            vertical-align: middle;
+            vertical-align: middle; /* 글자 높낮이 정렬 */
         }
         
         img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 10px auto; display: block; }
@@ -140,3 +141,30 @@
             const blob = new Blob([formulaContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
+            a.href = url;
+            a.download = `Macro_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function copyRaw() { 
+            input.select(); 
+            document.execCommand('copy'); 
+            const btn = document.querySelector('.copy-raw-btn');
+            const originalText = btn.innerText;
+            btn.innerText = "복사 완료! ✅";
+            setTimeout(() => btn.innerText = originalText, 1500);
+        }
+
+        function clearAll() { 
+            if(confirm("모두 삭제할까요?")) { 
+                input.value = ''; 
+                output.innerHTML = ''; 
+                localStorage.removeItem('r20_macro_auto_save');
+            } 
+        }
+    </script>
+</body>
+</html>
