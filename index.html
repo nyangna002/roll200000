@@ -34,21 +34,21 @@
             align-items: center;
         }
         
-        /* 💡 수정된 부분: font-size를 0에서 14px로 변경 */
+        /* 💡 핵심 수정: font-size를 0에서 unset으로 변경하여 내부 수식과 일반 텍스트가 모두 보이게 함 */
         .msg-line { 
             margin: 0 auto 15px auto; 
             display: block; 
             width: fit-content; 
-            font-size: 14px; 
-            text-align: left; 
+            font-size: 14px; /* '의' 글자와 이미지가 정상적으로 보이는 크기 */
+            text-align: left;
         }
         
-        /* 💡 추가된 부분: 수식 내부의 텍스트가 아닌 바깥 글자('의')의 정렬을 맞춤 */
         .msg-line > span, .msg-line > div { 
-            font-size: 11px; 
+            /* 수식 내부 폰트 사이즈는 수식 자체 스타일(17px 등)을 그대로 따르게 둠 */
             letter-spacing: normal;
             word-spacing: normal;
-            vertical-align: middle; /* 글자 높낮이 정렬 */
+            vertical-align: middle;
+            display: inline-block; /* 수식들이 가로로 배치되도록 설정 */
         }
         
         img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 10px auto; display: block; }
@@ -102,13 +102,18 @@
                 let p = line.trim();
                 if (!p) return '<div style="height: 15px;"></div>';
                 
+                // 1. 이미지 처리
                 p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)\)/gi, '<img src="$1">');
+                
+                // 2. 명령어 제거
                 p = p.replace(/^\/\w+\s+/, ''); 
 
+                // 3. 주소만 있을 때 처리
                 if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i.test(p)) {
                     return `<div class="msg-line" style="text-align:center;"><img src="${p}"></div>`;
                 }
 
+                // 4. 수식 변환 (사용자님 코드 그대로 보존)
                 p = p.replace(/\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g, (match, p1, p2, p3) => {
                     let content = p1.replace(/\?\{([^|}]*).*?\}/g, '$1');
                     if (!content.trim()) content = '　';
