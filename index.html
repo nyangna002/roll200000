@@ -6,43 +6,35 @@
     <title>Roll20 미리보기</title>
     <style>
         body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { width: 95%; max-width: 1100px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
+        .container { width: 95%; max-width: 1200px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
         .input-section { flex: 1; display: flex; flex-direction: column; }
         h2 { margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; }
-        textarea { width: 100%; height: 600px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
-        .preview-section { width: 340px; display: flex; flex-direction: column; }
+        textarea { width: 100%; height: 650px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
         
-        /* 💡 미리보기 영역: 내부의 모든 것을 중앙으로 정렬 */
-        .preview-area { background: #f3f3f3; padding: 30px 5px; border-radius: 4px; height: 700px; border: 1px solid #ddd; overflow-y: auto; overflow-x: auto; position: relative; }
+        .preview-section { width: 340px; display: flex; flex-direction: column; }
+        /* 💡 가로 스크롤 허용 및 박스 깨짐 방지 */
+        .preview-area { background: #f3f3f3; padding: 40px 10px; border-radius: 4px; height: 700px; border: 1px solid #ddd; overflow-y: auto; overflow-x: auto; position: relative; }
         .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
         
+        /* 💡 중앙 정렬: 수식 내부 속성을 건드리지 않는 방식 */
         #output { 
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center; /* 가로축 중앙 정렬 */
+            display: inline-block; 
+            min-width: 100%;
+            text-align: center; 
         }
         
-        /* 💡 개별 메시지 라인 보정 */
         .msg-line { 
-            margin: 15px 0; 
-            display: flex; /* Flexbox 적용 */
-            justify-content: center; /* 자식 요소들을 가로 중앙으로 */
-            align-items: center; 
-            flex-wrap: nowrap; /* 재생바가 꺾이지 않게 함 */
+            margin: 10px 0; 
+            display: block; 
             width: 100%; 
-            font-size: 0; 
+            text-align: center; 
+            white-space: nowrap; /* 💡 박스들이 아래로 떨어지는 것 방지 */
+            font-size: 0; /* 💡 박스 사이의 유령 공백 제거 */
         }
         
-        /* 💡 수식에서 생성된 박스(span, div) 정렬 강제 */
-        .msg-line > span, .msg-line > div { 
-            font-size: 11px; 
-            display: inline-block !important; 
-            float: none !important; /* 좌측 정렬 방해 요소 제거 */
-            margin: 0 !important; /* 개별 마진 초기화로 정렬 일치 */
-        }
-        
-        img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 5px auto; display: block; }
+        /* 이미지 정렬 */
+        .img-wrapper { display: block; text-align: center; width: 100%; }
+        img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 5px auto; display: inline-block; }
 
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
         button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; transition: 0.2s; flex: 1; min-width: 100px; }
@@ -60,16 +52,16 @@
 <body>
     <div class="container">
         <div class="input-section">
-            <h2>Roll20 매크로</h2>
-            <textarea id="input" placeholder="입력하세요."></textarea>
+            <h2>🛠️ Roll20 매크로 작업실</h2>
+            <textarea id="input" placeholder="수식을 입력하세요..."></textarea>
             <div class="btn-group">
                 <button class="copy-raw-btn" onclick="copyRaw()">원본 복사</button>
-                <button class="export-txt-btn" onclick="exportFormula()">수식 txt로 내보내기</button>
+                <button class="export-txt-btn" onclick="exportFormula()">수식 (.txt) 내보내기</button>
                 <button class="reset-btn" onclick="clearAll()">초기화</button>
             </div>
         </div>
         <div class="preview-section">
-            <div class="preview-label">Roll20 예시</div>
+            <div class="preview-label">Live Preview (Roll20 Chat)</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
@@ -92,14 +84,17 @@
             const converted = lines.map(line => {
                 let p = line.trim();
                 if (!p) return '<div style="height: 15px;"></div>';
-                p = p.replace(/^\/\w+\s+/, ''); 
-
-                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp).*?)\)/gi, '<img src="$1">');
                 
+                // 명령어나 이미지 처리
+                p = p.replace(/^\/\w+\s+/, ''); 
                 if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i.test(p)) {
-                    return `<div class="msg-line"><img src="${p}"></div>`;
+                    return `<div class="img-wrapper"><img src="${p}"></div>`;
                 }
 
+                // 이미지 마크다운 처리
+                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp).*?)\)/gi, '<img src="$1">');
+
+                // 💡 수식 파싱
                 p = p.replace(/\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g, (match, p1, p2, p3) => {
                     let content = p1.replace(/\?\{([^|}]*).*?\}/g, '$1');
                     if (!content.trim()) content = '　';
@@ -115,10 +110,11 @@
                     if (oc > cc) s += ')'.repeat(oc - cc);
                     if (!s.endsWith(';')) s += ';';
 
-                    // 중앙 정렬을 방해하는 display: block 등을 제어하기 위해 tag 생성 로직 유지
-                    const tag = s.includes('display:block') || s.includes('display: block') ? 'div' : 'span';
+                    // 💡 여기서 수식 내 display 속성을 건드리지 않고 태그만 결정
+                    const isBlock = s.includes('display:block') || s.includes('display: block');
+                    const tag = isBlock ? 'div' : 'span';
                     
-                    return `<${tag} style="${s} box-sizing: border-box;">${content}</${tag}>`;
+                    return `<${tag} style="${s} box-sizing: border-box; font-size: 11px; vertical-align: top;">${content}</${tag}>`;
                 });
 
                 return `<div class="msg-line">${p}</div>`;
@@ -128,7 +124,7 @@
 
         function exportFormula() {
             const formulaContent = input.value;
-            if (!formulaContent.trim()) { alert("내보낼 코드가 없습니다."); return; }
+            if (!formulaContent.trim()) { alert("내보낼 수식이 없습니다."); return; }
             const blob = new Blob([formulaContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -144,13 +140,13 @@
             input.select(); 
             document.execCommand('copy'); 
             const btn = document.querySelector('.copy-raw-btn');
-            const originalText = btn.innerText;
+            const originText = btn.innerText;
             btn.innerText = "복사 완료! ✅";
-            setTimeout(() => btn.innerText = originalText, 1500);
+            setTimeout(() => btn.innerText = originText, 1500);
         }
 
         function clearAll() { 
-            if(confirm("삭제합니까?")) { 
+            if(confirm("모두 삭제할까요?")) { 
                 input.value = ''; 
                 output.innerHTML = ''; 
                 localStorage.removeItem('r20_macro_auto_save');
