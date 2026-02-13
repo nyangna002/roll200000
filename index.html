@@ -1,10 +1,108 @@
-function convert() {
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roll20 미리보기</title>
+    <style>
+        body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .container { width: 95%; max-width: 1200px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; margin-top: 20px; }
+        .input-section { flex: 1; display: flex; flex-direction: column; }
+        h2 { margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; }
+        textarea { width: 100%; height: 650px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
+        
+        .preview-section { width: 340px; display: flex; flex-direction: column; }
+        .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
+        
+        /* 💡 미리보기 영역: 가로 스크롤 없이 중앙 정렬 고정 */
+        .preview-area { 
+            background: #f3f3f3; 
+            padding: 40px 10px; 
+            border-radius: 4px; 
+            height: 700px; 
+            border: 1px solid #ddd; 
+            overflow-y: auto; 
+            overflow-x: hidden; 
+            display: flex;
+            flex-direction: column;
+            align-items: center; 
+        }
+        
+        #output { 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .msg-line { 
+            margin: 0 auto 15px auto; 
+            display: block; 
+            width: fit-content; 
+            font-size: 0; 
+            text-align: left; /* 후원창 내부 텍스트 정렬 보존 */
+        }
+        
+        .msg-line > span, .msg-line > div { 
+            font-size: 11px; 
+            letter-spacing: normal;
+            word-spacing: normal;
+            vertical-align: top;
+        }
+        
+        /* 이미지 스타일 */
+        img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 10px auto; display: block; }
+
+        .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
+        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; transition: 0.2s; flex: 1; min-width: 100px; }
+        .copy-raw-btn { background: #8324FF; color: white; }
+        .export-txt-btn { background: #43b581; color: white; }
+        .reset-btn { background: #ed4245; color: white; }
+
+        @media (max-width: 900px) {
+            .container { flex-direction: column; width: 100%; }
+            .preview-section { width: 100%; }
+            textarea { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-section">
+            <h2>🛠️ Roll20 매크로 작업실</h2>
+            <textarea id="input" placeholder="수식을 입력하세요..."></textarea>
+            <div class="btn-group">
+                <button class="copy-raw-btn" onclick="copyRaw()">원본 복사</button>
+                <button class="export-txt-btn" onclick="exportFormula()">수식 (.txt) 내보내기</button>
+                <button class="reset-btn" onclick="clearAll()">초기화</button>
+            </div>
+        </div>
+        <div class="preview-section">
+            <div class="preview-label">Live Preview (Roll20 Chat)</div>
+            <div class="preview-area"><div id="output"></div></div>
+        </div>
+    </div>
+    <script>
+        const input = document.getElementById('input');
+        const output = document.getElementById('output');
+
+        window.onload = () => {
+            const saved = localStorage.getItem('r20_macro_auto_save');
+            if (saved) { input.value = saved; convert(); }
+        };
+
+        input.addEventListener('input', () => {
+            convert();
+            localStorage.setItem('r20_macro_auto_save', input.value);
+        });
+
+        function convert() {
             const lines = input.value.split('\n');
             const converted = lines.map(line => {
                 let p = line.trim();
                 if (!p) return '<div style="height: 15px;"></div>';
                 
-                // 1. [텍스트](이미지주소) 마크다운 형식 처리 (가장 먼저 실행)
+                // 1. [텍스트](이미지주소) 마크다운 처리 (가장 먼저 실행)
                 p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)\)/gi, '<img src="$1">');
 
                 // 2. /명령어 제거
@@ -12,7 +110,7 @@ function convert() {
 
                 // 3. 주소만 단독으로 있는 경우 이미지로 변환
                 if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i.test(p)) {
-                    return `<div style="display:block; text-align:center;"><img src="${p}"></div>`;
+                    return `<div class="msg-line" style="text-align:center;"><img src="${p}"></div>`;
                 }
 
                 // 4. Roll20 스타일 수식 변환
@@ -41,3 +139,37 @@ function convert() {
             }).join('');
             output.innerHTML = converted;
         }
+
+        function exportFormula() {
+            const formulaContent = input.value;
+            if (!formulaContent.trim()) { alert("내보낼 수식이 없습니다."); return; }
+            const blob = new Blob([formulaContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Macro_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function copyRaw() { 
+            input.select(); 
+            document.execCommand('copy'); 
+            const btn = document.querySelector('.copy-raw-btn');
+            const originalText = btn.innerText;
+            btn.innerText = "복사 완료! ✅";
+            setTimeout(() => btn.innerText = originalText, 1500);
+        }
+
+        function clearAll() { 
+            if(confirm("모두 삭제할까요?")) { 
+                input.value = ''; 
+                output.innerHTML = ''; 
+                localStorage.removeItem('r20_macro_auto_save');
+            } 
+        }
+    </script>
+</body>
+</html>
