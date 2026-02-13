@@ -69,11 +69,11 @@
 <body>
     <div class="container">
         <div class="input-section">
-            <h2>🛠️ Roll20 매크로 작업실</h2>
-            <textarea id="input" placeholder="수식을 입력하세요..."></textarea>
+            <h2>Roll20 매크로</h2>
+            <textarea id="input" placeholder="입력하세요..."></textarea>
             <div class="btn-group">
                 <button class="copy-raw-btn" onclick="copyRaw()">원본 복사</button>
-                <button class="export-txt-btn" onclick="exportFormula()">수식 (.txt) 내보내기</button>
+                <button class="export-txt-btn" onclick="exportFormula()">(.txt) 내보내기</button>
                 <button class="reset-btn" onclick="clearAll()">초기화</button>
             </div>
         </div>
@@ -142,7 +142,7 @@
 
         function exportFormula() {
             const formulaContent = input.value;
-            if (!formulaContent.trim()) { alert("내보낼 수식이 없습니다."); return; }
+            if (!formulaContent.trim()) { alert("내보낼 것이 없습니다."); return; }
             const blob = new Blob([formulaContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -159,7 +159,7 @@
             document.execCommand('copy'); 
             const btn = document.querySelector('.copy-raw-btn');
             const originalText = btn.innerText;
-            btn.innerText = "복사 완료! ✅";
+            btn.innerText = "복사 완료!";
             setTimeout(() => btn.innerText = originalText, 1500);
         }
 
@@ -173,3 +173,4 @@
     </script>
 </body>
 </html>
+
