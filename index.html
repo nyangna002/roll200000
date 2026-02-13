@@ -14,7 +14,6 @@
         .preview-section { width: 340px; display: flex; flex-direction: column; }
         .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
         
-        /* 💡 미리보기 영역: 가로 스크롤 없이 중앙 정렬 고정 */
         .preview-area { 
             background: #f3f3f3; 
             padding: 40px 10px; 
@@ -22,35 +21,30 @@
             height: 700px; 
             border: 1px solid #ddd; 
             overflow-y: auto; 
-            overflow-x: hidden; 
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
             align-items: center; 
         }
         
-        #output { 
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+        #output { width: 100%; display: flex; flex-direction: column; align-items: center; }
         
         .msg-line { 
             margin: 0 auto 15px auto; 
             display: block; 
             width: fit-content; 
-            font-size: 0; 
-            text-align: left; /* 후원창 내부 텍스트 정렬 보존 */
+            /* 💡 font-size: 0을 제거하고 기본 크기를 줘서 '의'가 보이게 함 */
+            font-size: 14px; 
+            text-align: left;
+            line-height: 1.6;
         }
         
+        /* 수식 내부 요소들은 각자의 스타일을 따름 */
         .msg-line > span, .msg-line > div { 
-            font-size: 11px; 
-            letter-spacing: normal;
-            word-spacing: normal;
-            vertical-align: top;
+            vertical-align: middle;
+            display: inline-block;
         }
         
-        /* 이미지 스타일 */
         img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 10px auto; display: block; }
 
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -58,12 +52,6 @@
         .copy-raw-btn { background: #8324FF; color: white; }
         .export-txt-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
-
-        @media (max-width: 900px) {
-            .container { flex-direction: column; width: 100%; }
-            .preview-section { width: 100%; }
-            textarea { height: 400px; }
-        }
     </style>
 </head>
 <body>
@@ -102,36 +90,19 @@
                 let p = line.trim();
                 if (!p) return '<div style="height: 15px;"></div>';
                 
-                // 1. [텍스트](이미지주소) 마크다운 처리 (가장 먼저 실행)
-                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)\)/gi, '<img src="$1">');
-
-                // 2. /명령어 제거
+                // 1. /명령어 제거
                 p = p.replace(/^\/\w+\s+/, ''); 
 
-                // 3. 주소만 단독으로 있는 경우 이미지로 변환
-                if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i.test(p)) {
-                    return `<div class="msg-line" style="text-align:center;"><img src="${p}"></div>`;
-                }
+                // 2. 이미지 마크다운 처리
+                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)\)/gi, '<img src="$1">');
 
-                // 4. Roll20 스타일 수식 변환
+                // 3. Roll20 스타일 수식 변환
                 p = p.replace(/\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g, (match, p1, p2, p3) => {
                     let content = p1.replace(/\?\{([^|}]*).*?\}/g, '$1');
                     if (!content.trim()) content = '　';
-
-                    let s = p3.replace(/&#41;/g, ')').replace(/&quot;/g, '"')
-                              .replace(/[\u00A0\u1680​\u180E\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
-                              .trim();
-
-                    if (s.includes('box-shadow')) s += " margin-top: 20px; margin-bottom: 20px;";
-
-                    const oc = (s.match(/\(/g) || []).length;
-                    const cc = (s.match(/\)/g) || []).length;
-                    if (oc > cc) s += ')'.repeat(oc - cc);
-                    if (!s.endsWith(';')) s += ';';
-
+                    let s = p3.replace(/&#41;/g, ')').replace(/&quot;/g, '"').trim();
                     const isBlock = s.includes('display:block') || s.includes('display: block');
                     const tag = isBlock ? 'div' : 'span';
-                    
                     return `<${tag} style="${s} box-sizing: border-box;">${content}</${tag}>`;
                 });
 
@@ -142,25 +113,20 @@
 
         function exportFormula() {
             const formulaContent = input.value;
-            if (!formulaContent.trim()) { alert("내보낼 수식이 없습니다."); return; }
             const blob = new Blob([formulaContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `Macro_${new Date().toISOString().slice(0, 10)}.txt`;
-            document.body.appendChild(a);
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
         }
 
         function copyRaw() { 
             input.select(); 
             document.execCommand('copy'); 
             const btn = document.querySelector('.copy-raw-btn');
-            const originalText = btn.innerText;
             btn.innerText = "복사 완료! ✅";
-            setTimeout(() => btn.innerText = originalText, 1500);
+            setTimeout(() => btn.innerText = "원본 복사", 1500);
         }
 
         function clearAll() { 
