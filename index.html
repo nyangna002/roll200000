@@ -9,54 +9,66 @@
         .input-section { flex: 1; display: flex; flex-direction: column; }
         textarea { width: 100%; height: 650px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; resize: none; outline: none; }
         
-        /* 💡 롤20 채팅창 실사 사이즈 반영 (가로 300px 내외) */
+        /* 💡 롤20 채팅창 실사 사이즈 (가로 300px) */
         .preview-section { width: 320px; display: flex; flex-direction: column; flex-shrink: 0; }
         .preview-area { 
             background: #f3f3f3; padding: 20px 10px; border-radius: 4px; height: 700px; border: 1px solid #ddd; 
-            overflow-y: auto; overflow-x: hidden; /* 가로 스크롤 금지 */
+            overflow-y: auto; overflow-x: hidden; 
         }
         
-        /* 💡 핵심: 너비 초과 시 자동 축소 로직 */
-        #output { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        #output { width: 100%; display: flex; flex-direction: column; }
         
         .msg-line { 
-            margin-bottom: 12px; 
-            width: fit-content;
-            max-width: 100%; /* 부모 너비를 넘지 못하게 함 */
-            white-space: nowrap; 
-            font-size: 14px;
-            letter-spacing: -0.3em; /* 박스 틈새 제거 */
-            transform-origin: top center; /* 중앙 기준 축소 */
+            margin-bottom: 8px; 
+            width: 100%;
+            word-break: break-all; /* 일반 텍스트는 자동 줄바꿈 */
+            font-size: 13px;
+            line-height: 1.4;
+            color: #333;
         }
 
-        /* 💡 너비가 300px을 넘는 큰 수식(BGM 등)은 자동으로 작게 만듦 */
+        /* 💡 수식 덩어리가 들어간 경우에만 특수 처리 */
+        .formula-line {
+            white-space: nowrap; 
+            letter-spacing: -0.3em;
+            display: block;
+            width: fit-content;
+        }
+
+        /* 💡 너비가 큰 수식(BGM 등) 전용 축소기 */
         .scaled-wrapper {
             display: inline-block;
-            transform: scale(0.65); /* 430px 수식을 280px 내외로 축소 */
-            transform-origin: left center;
-            margin-right: -35%; /* 축소로 생긴 여백 제거 */
+            transform: scale(0.68); 
+            transform-origin: left top;
+            margin-right: -32%; 
+            margin-bottom: -15px; /* 축소로 생기는 하단 공백 제거 */
         }
         
-        .msg-line > * { letter-spacing: normal; display: inline-block; vertical-align: middle; }
-        .msg-text { display: inline-block; vertical-align: middle; margin: 0 2px; }
+        .formula-line > * { letter-spacing: normal; display: inline-block; vertical-align: top; }
+        .msg-text { display: inline-block; vertical-align: middle; letter-spacing: normal; }
         
-        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 5px auto; }
+        /* 💡 이미지 크기 자동 조절 */
+        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 8px auto; }
+        
         .btn-group { margin-top: 15px; display: flex; gap: 8px; }
-        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; }
+        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; transition: 0.2s; }
         .copy-raw-btn { background: #8324FF; color: white; }
         .reset-btn { background: #ed4245; color: white; }
+        button:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="input-section">
-            <textarea id="input" placeholder="수식을 입력하세요..."></textarea>
+            <h2 style="font-size: 18px; margin-bottom: 10px;">Roll20 Macro Editor</h2>
+            <textarea id="input" placeholder="이곳에 매크로를 붙여넣으세요..."></textarea>
             <div class="btn-group">
-                <button class="copy-raw-btn" onclick="copyRaw()">복사</button>
+                <button class="copy-raw-btn" onclick="copyRaw()">전체 복사</button>
                 <button class="reset-btn" onclick="clearAll()">초기화</button>
             </div>
         </div>
         <div class="preview-section">
+            <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: bold;">CHAT PREVIEW (300px)</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
@@ -70,44 +82,71 @@
             const lines = input.value.split('\n');
             output.innerHTML = lines.map(line => {
                 let p = line.trim();
-                if (!p) return '<div style="height: 10px;"></div>';
+                if (!p) return '<div style="height: 12px;"></div>';
                 
-                // 이미지 마크다운
-                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp).*?)\)/gi, '<img src="$1">');
+                // 1. /desc, /em 등 명령어 제거
                 p = p.replace(/^\/\w+\s+/, ''); 
 
+                // 2. 이미지 주소 처리 (단독 주소 혹은 마크다운)
+                const imgRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)/gi;
+                if (p.match(imgRegex) && !p.includes('style=')) {
+                    return p.replace(imgRegex, (url) => `<img src="${url}">`);
+                }
+
+                // 3. 수식([텍스트](style)) 처리 시작
                 let result = "";
-                const regex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
+                const formulaRegex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
                 let match;
                 let lastIdx = 0;
-                let hasWideBox = false;
+                let hasFormula = false;
+                let totalWidth = 0;
 
-                while ((match = regex.exec(p)) !== null) {
+                while ((match = formulaRegex.exec(p)) !== null) {
+                    hasFormula = true;
+                    // 수식 앞 일반 텍스트
                     let before = p.substring(lastIdx, match.index);
                     if (before) result += `<span class="msg-text">${before}</span>`;
 
                     let content = match[1].replace(/\?\{[^}]+\}/g, '입력값');
                     let s = match[3].replace(/&#41;/g, ')').trim();
                     
-                    // 너비가 큰 박스가 있는지 확인 (BGM 재생바 판별)
-                    if (s.includes('width') && parseInt(s.match(/width:\s*(\d+)px/)?.[1] || 0) > 100) hasWideBox = true;
+                    // 너비 합계 계산 (BGM 등 조립용)
+                    let wMatch = s.match(/width:\s*(\d+)px/);
+                    if (wMatch) totalWidth += parseInt(wMatch[1]);
 
                     const tag = s.includes('display:block') ? 'div' : 'span';
                     result += `<${tag} style="${s}">${content}</${tag}>`;
-                    lastIdx = regex.lastIndex;
+                    lastIdx = formulaRegex.lastIndex;
                 }
+                
+                // 수식 뒤 남은 텍스트
                 result += `<span class="msg-text">${p.substring(lastIdx)}</span>`;
 
-                // 💡 너비가 큰 수식은 scaled-wrapper로 감싸서 축소 처리
-                if (hasWideBox) {
-                    return `<div class="msg-line"><div class="scaled-wrapper">${result}</div></div>`;
+                // 4. 레이아웃 결정
+                if (hasFormula) {
+                    // 너비가 300px을 넘으면 축소 래퍼 적용
+                    if (totalWidth > 280) {
+                        return `<div class="msg-line"><div class="scaled-wrapper"><div class="formula-line">${result}</div></div></div>`;
+                    }
+                    return `<div class="msg-line"><div class="formula-line">${result}</div></div>`;
+                } else {
+                    // 일반 텍스트 라인
+                    return `<div class="msg-line">${result}</div>`;
                 }
-                return `<div class="msg-line">${result}</div>`;
             }).join('');
         }
 
-        function copyRaw() { input.select(); document.execCommand('copy'); }
-        function clearAll() { input.value = ''; output.innerHTML = ''; }
+        function copyRaw() { 
+            input.select(); 
+            document.execCommand('copy'); 
+            alert('복사되었습니다!');
+        }
+        function clearAll() { 
+            if(confirm('내용을 모두 지울까요?')) {
+                input.value = ''; 
+                output.innerHTML = ''; 
+            }
+        }
     </script>
 </body>
 </html>
