@@ -2,57 +2,34 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Roll20 미리보기</title>
+    <title>Roll20 매크로 작업실</title>
     <style>
         body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
         .container { width: 95%; max-width: 1200px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
         .input-section { flex: 1; display: flex; flex-direction: column; }
-        textarea { width: 100%; height: 650px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; resize: none; outline: none; }
+        textarea { width: 100%; height: 600px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; resize: none; outline: none; }
         
-        /* 💡 롤20 채팅창 실사 사이즈 (가로 300px) */
+        /* 롤20 채팅창 사이즈 고정 */
         .preview-section { width: 320px; display: flex; flex-direction: column; flex-shrink: 0; }
         .preview-area { 
-            background: #f3f3f3; padding: 20px 10px; border-radius: 4px; height: 700px; border: 1px solid #ddd; 
+            background: #f3f3f3; padding: 20px 10px; border-radius: 4px; height: 680px; border: 1px solid #ddd; 
             overflow-y: auto; overflow-x: hidden; 
         }
         
         #output { width: 100%; display: flex; flex-direction: column; }
         
-        .msg-line { 
-            margin-bottom: 8px; 
-            width: 100%;
-            word-break: break-all; /* 일반 텍스트는 자동 줄바꿈 */
-            font-size: 13px;
-            line-height: 1.4;
-            color: #333;
-        }
-
-        /* 💡 수식 덩어리가 들어간 경우에만 특수 처리 */
-        .formula-line {
-            white-space: nowrap; 
-            letter-spacing: -0.3em;
-            display: block;
-            width: fit-content;
-        }
-
-        /* 💡 너비가 큰 수식(BGM 등) 전용 축소기 */
-        .scaled-wrapper {
-            display: inline-block;
-            transform: scale(0.68); 
-            transform-origin: left top;
-            margin-right: -32%; 
-            margin-bottom: -15px; /* 축소로 생기는 하단 공백 제거 */
-        }
-        
+        .msg-line { margin-bottom: 10px; width: 100%; word-break: break-all; font-size: 13px; line-height: 1.4; color: #333; }
+        .formula-line { white-space: nowrap; letter-spacing: -0.3em; display: block; width: fit-content; }
+        .scaled-wrapper { display: inline-block; transform: scale(0.68); transform-origin: left top; margin-right: -32%; margin-bottom: -10px; }
         .formula-line > * { letter-spacing: normal; display: inline-block; vertical-align: top; }
         .msg-text { display: inline-block; vertical-align: middle; letter-spacing: normal; }
         
-        /* 💡 이미지 크기 자동 조절 */
-        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 8px auto; }
+        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 8px auto; background: #eee; min-height: 50px; }
         
-        .btn-group { margin-top: 15px; display: flex; gap: 8px; }
-        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; transition: 0.2s; }
+        .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
+        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; min-width: 80px; transition: 0.2s; }
         .copy-raw-btn { background: #8324FF; color: white; }
+        .export-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
         button:hover { opacity: 0.8; }
     </style>
@@ -60,23 +37,37 @@
 <body>
     <div class="container">
         <div class="input-section">
-            <h2 style="font-size: 18px; margin-bottom: 10px;">Roll20 Macro Editor</h2>
-            <textarea id="input" placeholder="이곳에 매크로를 붙여넣으세요..."></textarea>
+            <h2 style="font-size: 18px; margin-bottom: 10px;">🛠️ Roll20 Macro Studio</h2>
+            <textarea id="input" placeholder="매크로를 입력하면 자동으로 저장되고 미리보기가 업데이트됩니다."></textarea>
             <div class="btn-group">
                 <button class="copy-raw-btn" onclick="copyRaw()">전체 복사</button>
+                <button class="export-btn" onclick="exportTxt()">텍스트 내보내기</button>
                 <button class="reset-btn" onclick="clearAll()">초기화</button>
             </div>
         </div>
         <div class="preview-section">
-            <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: bold;">CHAT PREVIEW (300px)</div>
+            <div style="font-size: 11px; color: #888; margin-bottom: 8px; font-weight: bold;">CHAT PREVIEW</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
+
     <script>
         const input = document.getElementById('input');
         const output = document.getElementById('output');
 
-        input.addEventListener('input', convert);
+        // 자동 저장 및 불러오기
+        window.onload = () => {
+            const savedData = localStorage.getItem('r20_macro_data');
+            if (savedData) {
+                input.value = savedData;
+                convert();
+            }
+        };
+
+        input.addEventListener('input', () => {
+            convert();
+            localStorage.setItem('r20_macro_data', input.value);
+        });
 
         function convert() {
             const lines = input.value.split('\n');
@@ -84,16 +75,20 @@
                 let p = line.trim();
                 if (!p) return '<div style="height: 12px;"></div>';
                 
-                // 1. /desc, /em 등 명령어 제거
+                // 1. 명령어 제거
                 p = p.replace(/^\/\w+\s+/, ''); 
 
-                // 2. 이미지 주소 처리 (단독 주소 혹은 마크다운)
-                const imgRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)/gi;
+                // 2. 이미지 처리 (확장자 없어도 imgur 주소면 허용)
+                const imgRegex = /(https?:\/\/(?:i\.)?imgur\.com\/[a-zA-Z0-9]+(?:\.[a-zA-Z]+)?)/gi;
                 if (p.match(imgRegex) && !p.includes('style=')) {
-                    return p.replace(imgRegex, (url) => `<img src="${url}">`);
+                    return p.replace(imgRegex, (url) => {
+                        // 확장자가 없으면 .png를 붙여서 시도 (imgur 특성)
+                        let src = url.includes('.') ? url : url + '.png';
+                        return `<img src="${src}">`;
+                    });
                 }
 
-                // 3. 수식([텍스트](style)) 처리 시작
+                // 3. 수식 처리
                 let result = "";
                 const formulaRegex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
                 let match;
@@ -103,14 +98,12 @@
 
                 while ((match = formulaRegex.exec(p)) !== null) {
                     hasFormula = true;
-                    // 수식 앞 일반 텍스트
                     let before = p.substring(lastIdx, match.index);
                     if (before) result += `<span class="msg-text">${before}</span>`;
 
-                    let content = match[1].replace(/\?\{[^}]+\}/g, '입력값');
+                    let content = match[1].replace(/\?\{[^}]+\}/g, '...');
                     let s = match[3].replace(/&#41;/g, ')').trim();
                     
-                    // 너비 합계 계산 (BGM 등 조립용)
                     let wMatch = s.match(/width:\s*(\d+)px/);
                     if (wMatch) totalWidth += parseInt(wMatch[1]);
 
@@ -118,33 +111,38 @@
                     result += `<${tag} style="${s}">${content}</${tag}>`;
                     lastIdx = formulaRegex.lastIndex;
                 }
-                
-                // 수식 뒤 남은 텍스트
                 result += `<span class="msg-text">${p.substring(lastIdx)}</span>`;
 
-                // 4. 레이아웃 결정
                 if (hasFormula) {
-                    // 너비가 300px을 넘으면 축소 래퍼 적용
                     if (totalWidth > 280) {
                         return `<div class="msg-line"><div class="scaled-wrapper"><div class="formula-line">${result}</div></div></div>`;
                     }
                     return `<div class="msg-line"><div class="formula-line">${result}</div></div>`;
-                } else {
-                    // 일반 텍스트 라인
-                    return `<div class="msg-line">${result}</div>`;
                 }
+                return `<div class="msg-line">${result}</div>`;
             }).join('');
         }
 
-        function copyRaw() { 
-            input.select(); 
-            document.execCommand('copy'); 
-            alert('복사되었습니다!');
+        function exportTxt() {
+            const blob = new Blob([input.value], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `macro_${new Date().getTime()}.txt`;
+            a.click();
         }
-        function clearAll() { 
-            if(confirm('내용을 모두 지울까요?')) {
-                input.value = ''; 
-                output.innerHTML = ''; 
+
+        function copyRaw() {
+            input.select();
+            document.execCommand('copy');
+            alert('클립보드에 복사되었습니다.');
+        }
+
+        function clearAll() {
+            if(confirm('내용을 지울까요?')) {
+                input.value = '';
+                output.innerHTML = '';
+                localStorage.removeItem('r20_macro_data');
             }
         }
     </script>
