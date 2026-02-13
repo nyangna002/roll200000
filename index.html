@@ -11,7 +11,6 @@
         h2 { margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; }
         textarea { width: 100%; height: 650px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
         
-        /* 💡 미리보기 섹션 너비 조정: 긴 수식도 수용 가능하도록 변경 */
         .preview-section { width: 450px; display: flex; flex-direction: column; }
         .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
         
@@ -22,31 +21,40 @@
             height: 700px; 
             border: 1px solid #ddd; 
             overflow-y: auto; 
-            overflow-x: auto; /* 💡 긴 재생바는 스크롤로 보호 */
+            overflow-x: auto; 
             display: block;
             text-align: center; 
         }
         
         #output { 
-            display: inline-block; /* 💡 내용물 너비를 그대로 유지 */
+            display: inline-block; 
             text-align: left;
             min-width: 100%;
         }
         
+        /* 💡 핵심: 텍스트는 보이게 하되, 박스 사이의 공백(white-space)만 제거 */
         .msg-line { 
             margin: 0 auto 15px auto; 
             display: block; 
-            width: max-content; /* 💡 내용물이 길어도 압축하지 않음 */
-            font-size: 0; 
-            white-space: nowrap; /* 💡 강제 줄바꿈 방지 */
+            width: max-content; 
+            white-space: nowrap; 
+            font-size: 14px; /* 일반 글자 크기 복구 */
+            letter-spacing: -0.3em; /* 박스 사이 간격 강제 압축 */
         }
         
-        .msg-line > span, .msg-line > div, .msg-line > a { 
-            font-size: 11px; 
+        /* 💡 글자가 박스 안에서 다시 정상적으로 보이도록 설정 */
+        .msg-line > * { 
+            letter-spacing: normal; 
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        /* 수식 요소 및 텍스트 노드 처리 */
+        .msg-text {
+            display: inline-block;
             letter-spacing: normal;
-            word-spacing: normal;
-            vertical-align: top;
-            box-sizing: content-box !important; /* 💡 Roll20의 박스 모델과 일치시킴 */
+            vertical-align: middle;
+            margin: 0 2px;
         }
         
         img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 10px auto; display: block; }
@@ -107,11 +115,21 @@
                     return `<div class="msg-line" style="text-align:center;"><img src="${p}"></div>`;
                 }
 
-                p = p.replace(/\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g, (match, p1, p2, p3) => {
-                    let content = p1.replace(/\?\{([^|}]*).*?\}/g, '$1');
+                // 💡 수식 부분 변환 및 일반 텍스트 감싸기
+                let lastIdx = 0;
+                let result = "";
+                const regex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
+                let match;
+
+                while ((match = regex.exec(p)) !== null) {
+                    // 수식 전의 일반 텍스트 처리
+                    let before = p.substring(lastIdx, match.index);
+                    if (before) result += `<span class="msg-text">${before}</span>`;
+
+                    let content = match[1].replace(/\?\{([^|}]*).*?\}/g, '$1');
                     if (!content.trim()) content = '　';
 
-                    let s = p3.replace(/&#41;/g, ')').replace(/&quot;/g, '"')
+                    let s = match[3].replace(/&#41;/g, ')').replace(/&quot;/g, '"')
                               .replace(/[\u00A0\u1680​\u180E\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
                               .trim();
 
@@ -125,10 +143,15 @@
                     const isBlock = s.includes('display:block') || s.includes('display: block');
                     const tag = isBlock ? 'div' : 'span';
                     
-                    return `<${tag} style="${s}">${content}</${tag}>`;
-                });
+                    result += `<${tag} style="${s}">${content}</${tag}>`;
+                    lastIdx = regex.lastIndex;
+                }
+                
+                // 수식 후의 남은 일반 텍스트 처리
+                let after = p.substring(lastIdx);
+                if (after) result += `<span class="msg-text">${after}</span>`;
 
-                return `<div class="msg-line">${p}</div>`;
+                return `<div class="msg-line">${result || p}</div>`;
             }).join('');
             output.innerHTML = converted;
         }
@@ -151,7 +174,7 @@
             input.select(); 
             document.execCommand('copy'); 
             const btn = document.querySelector('.copy-raw-btn');
-            const originText = btn.innerText;
+            const originalText = btn.innerText;
             btn.innerText = "복사 완료! ✅";
             setTimeout(() => btn.innerText = originalText, 1500);
         }
