@@ -14,45 +14,44 @@
         .preview-section { width: 340px; display: flex; flex-direction: column; }
         .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
         
-        /* 💡 가로 스크롤 핵심: 내부 콘텐츠가 길어도 잘리지 않게 설정 */
+        /* 💡 미리보기 영역: 가로 스크롤을 보장하고 내부 정렬의 기준이 됨 */
         .preview-area { 
             background: #f3f3f3; 
-            padding: 40px 0; /* 좌우 패딩을 제거하여 스크롤 걸림 방지 */
+            padding: 40px 0; 
             border-radius: 4px; 
             height: 700px; 
             border: 1px solid #ddd; 
             overflow-y: auto; 
-            overflow-x: auto; /* 가로 스크롤 강제 활성화 */
+            overflow-x: auto; 
             display: block; 
+            text-align: center; /* 내부 inline-block 덩어리를 중앙으로 */
         }
         
-        /* 💡 중앙 정렬 및 사각형 보호 */
+        /* 💡 출력 컨테이너: 수식의 본래 너비를 보존하면서 중앙 배치 */
         #output { 
-            display: table; /* 내용물 너비에 딱 맞게 조절 */
-            margin: 0 auto; /* 정중앙 배치 */
-            text-align: center;
+            display: inline-block; 
+            text-align: left; /* 수식 내부의 기본 정렬은 왼쪽으로 복구 */
             min-width: 100%;
         }
         
+        /* 💡 개별 라인: 수식 조각들이 서로 방해받지 않도록 설정 */
         .msg-line { 
-            margin: 10px 0; 
+            margin: 15px 0; 
             display: block; 
-            text-align: center; 
-            white-space: nowrap; /* 💡 박스 줄바꿈 금지 */
-            font-size: 0; /* 💡 박스 사이 틈새(4px) 제거 */
+            width: 100%; 
+            clear: both;
+            font-size: 0; /* 박스 사이 유령 여백 제거 */
         }
         
-        /* 💡 수식에서 생성되는 개별 박스 속성 보존 */
-        .msg-line > span, .msg-line > div { 
+        /* 💡 수식 내부 요소: 원래 수식의 속성을 최대한 존중 */
+        .msg-line > span, .msg-line > div, .msg-line > a { 
             font-size: 11px; 
-            vertical-align: top; 
-            display: inline-block !important; /* 무조건 나란히 */
-            float: none !important; 
-            letter-spacing: normal; 
+            letter-spacing: normal;
             word-spacing: normal;
+            /* 수식에서 정의한 display 속성이 작동하도록 함 */
         }
         
-        img { max-width: none !important; border-radius: 2px; margin: 5px auto; display: block; }
+        img { max-width: none !important; border-radius: 2px; margin: 10px auto; display: block; }
 
         .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
         button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; transition: 0.2s; flex: 1; min-width: 100px; }
@@ -110,6 +109,7 @@
                     return `<div style="display:block; text-align:center;"><img src="${p}" style="max-width:100%;"></div>`;
                 }
 
+                // 수식 변환
                 p = p.replace(/\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g, (match, p1, p2, p3) => {
                     let content = p1.replace(/\?\{([^|}]*).*?\}/g, '$1');
                     if (!content.trim()) content = '　';
@@ -125,6 +125,7 @@
                     if (oc > cc) s += ')'.repeat(oc - cc);
                     if (!s.endsWith(';')) s += ';';
 
+                    // 💡 후원창 박스 깨짐의 핵심: display 속성을 임의로 바꾸지 않음
                     const isBlock = s.includes('display:block') || s.includes('display: block');
                     const tag = isBlock ? 'div' : 'span';
                     
