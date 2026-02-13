@@ -2,89 +2,61 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Roll20 미리보기</title>
     <style>
-        body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
-        .container { width: 95%; max-width: 1400px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; margin-top: 20px; }
+        body { font-family: 'Apple SD Gothic Neo', sans-serif; background: #e9ecef; padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .container { width: 95%; max-width: 1200px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; gap: 20px; }
         .input-section { flex: 1; display: flex; flex-direction: column; }
-        h2 { margin: 0 0 15px 0; color: #1a1a1a; font-size: 20px; }
-        textarea { width: 100%; height: 650px; background: #ffffff; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; outline: none; resize: none; }
+        textarea { width: 100%; height: 650px; border: 1.5px solid #ddd; border-left: 5px solid #8324FF; padding: 15px; border-radius: 8px; box-sizing: border-box; font-family: 'Consolas', monospace; font-size: 13px; resize: none; outline: none; }
         
-        .preview-section { width: 450px; display: flex; flex-direction: column; }
-        .preview-label { color: #888; font-size: 11px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; padding-bottom: 5px; }
-        
+        /* 💡 롤20 채팅창 실사 사이즈 반영 (가로 300px 내외) */
+        .preview-section { width: 320px; display: flex; flex-direction: column; flex-shrink: 0; }
         .preview-area { 
-            background: #f3f3f3; 
-            padding: 40px 10px; 
-            border-radius: 4px; 
-            height: 700px; 
-            border: 1px solid #ddd; 
-            overflow-y: auto; 
-            overflow-x: auto; 
-            display: block;
-            text-align: center; 
+            background: #f3f3f3; padding: 20px 10px; border-radius: 4px; height: 700px; border: 1px solid #ddd; 
+            overflow-y: auto; overflow-x: hidden; /* 가로 스크롤 금지 */
         }
         
-        #output { 
-            display: inline-block; 
-            text-align: left;
-            min-width: 100%;
-        }
+        /* 💡 핵심: 너비 초과 시 자동 축소 로직 */
+        #output { width: 100%; display: flex; flex-direction: column; align-items: center; }
         
-        /* 💡 핵심: 텍스트는 보이게 하되, 박스 사이의 공백(white-space)만 제거 */
         .msg-line { 
-            margin: 0 auto 15px auto; 
-            display: block; 
-            width: max-content; 
+            margin-bottom: 12px; 
+            width: fit-content;
+            max-width: 100%; /* 부모 너비를 넘지 못하게 함 */
             white-space: nowrap; 
-            font-size: 14px; /* 일반 글자 크기 복구 */
-            letter-spacing: -0.3em; /* 박스 사이 간격 강제 압축 */
-        }
-        
-        /* 💡 글자가 박스 안에서 다시 정상적으로 보이도록 설정 */
-        .msg-line > * { 
-            letter-spacing: normal; 
-            display: inline-block;
-            vertical-align: middle;
+            font-size: 14px;
+            letter-spacing: -0.3em; /* 박스 틈새 제거 */
+            transform-origin: top center; /* 중앙 기준 축소 */
         }
 
-        /* 수식 요소 및 텍스트 노드 처리 */
-        .msg-text {
+        /* 💡 너비가 300px을 넘는 큰 수식(BGM 등)은 자동으로 작게 만듦 */
+        .scaled-wrapper {
             display: inline-block;
-            letter-spacing: normal;
-            vertical-align: middle;
-            margin: 0 2px;
+            transform: scale(0.65); /* 430px 수식을 280px 내외로 축소 */
+            transform-origin: left center;
+            margin-right: -35%; /* 축소로 생긴 여백 제거 */
         }
         
-        img { max-width: 100% !important; height: auto !important; border-radius: 2px; margin: 10px auto; display: block; }
-
-        .btn-group { margin-top: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
-        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; transition: 0.2s; flex: 1; min-width: 100px; }
+        .msg-line > * { letter-spacing: normal; display: inline-block; vertical-align: middle; }
+        .msg-text { display: inline-block; vertical-align: middle; margin: 0 2px; }
+        
+        img { max-width: 100%; height: auto; border-radius: 2px; display: block; margin: 5px auto; }
+        .btn-group { margin-top: 15px; display: flex; gap: 8px; }
+        button { padding: 12px; cursor: pointer; border-radius: 6px; border: none; font-weight: bold; font-size: 12px; flex: 1; }
         .copy-raw-btn { background: #8324FF; color: white; }
-        .export-txt-btn { background: #43b581; color: white; }
         .reset-btn { background: #ed4245; color: white; }
-
-        @media (max-width: 1100px) {
-            .container { flex-direction: column; width: 100%; }
-            .preview-section { width: 100%; }
-            textarea { height: 400px; }
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="input-section">
-            <h2>🛠️ Roll20 매크로 작업실</h2>
             <textarea id="input" placeholder="수식을 입력하세요..."></textarea>
             <div class="btn-group">
-                <button class="copy-raw-btn" onclick="copyRaw()">원본 복사</button>
-                <button class="export-txt-btn" onclick="exportFormula()">수식 (.txt) 내보내기</button>
+                <button class="copy-raw-btn" onclick="copyRaw()">복사</button>
                 <button class="reset-btn" onclick="clearAll()">초기화</button>
             </div>
         </div>
         <div class="preview-section">
-            <div class="preview-label">Live Preview (Roll20 Chat)</div>
             <div class="preview-area"><div id="output"></div></div>
         </div>
     </div>
@@ -92,100 +64,50 @@
         const input = document.getElementById('input');
         const output = document.getElementById('output');
 
-        window.onload = () => {
-            const saved = localStorage.getItem('r20_macro_auto_save');
-            if (saved) { input.value = saved; convert(); }
-        };
-
-        input.addEventListener('input', () => {
-            convert();
-            localStorage.setItem('r20_macro_auto_save', input.value);
-        });
+        input.addEventListener('input', convert);
 
         function convert() {
             const lines = input.value.split('\n');
-            const converted = lines.map(line => {
+            output.innerHTML = lines.map(line => {
                 let p = line.trim();
-                if (!p) return '<div style="height: 15px;"></div>';
+                if (!p) return '<div style="height: 10px;"></div>';
                 
-                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)\)/gi, '<img src="$1">');
+                // 이미지 마크다운
+                p = p.replace(/\[.*?\]\((https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp).*?)\)/gi, '<img src="$1">');
                 p = p.replace(/^\/\w+\s+/, ''); 
 
-                if (/^(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp)(?:\?.*)?)$/i.test(p)) {
-                    return `<div class="msg-line" style="text-align:center;"><img src="${p}"></div>`;
-                }
-
-                // 💡 수식 부분 변환 및 일반 텍스트 감싸기
-                let lastIdx = 0;
                 let result = "";
                 const regex = /\[([\s\S]*?)\]\(([\s\S]*?)style="([\s\S]*?)"?\)/g;
                 let match;
+                let lastIdx = 0;
+                let hasWideBox = false;
 
                 while ((match = regex.exec(p)) !== null) {
-                    // 수식 전의 일반 텍스트 처리
                     let before = p.substring(lastIdx, match.index);
                     if (before) result += `<span class="msg-text">${before}</span>`;
 
-                    let content = match[1].replace(/\?\{([^|}]*).*?\}/g, '$1');
-                    if (!content.trim()) content = '　';
-
-                    let s = match[3].replace(/&#41;/g, ')').replace(/&quot;/g, '"')
-                              .replace(/[\u00A0\u1680​\u180E\u2000-\u200B\u202F\u205F\u3000]/g, ' ')
-                              .trim();
-
-                    if (s.includes('box-shadow')) s += " margin-top: 20px; margin-bottom: 20px;";
-
-                    const oc = (s.match(/\(/g) || []).length;
-                    const cc = (s.match(/\)/g) || []).length;
-                    if (oc > cc) s += ')'.repeat(oc - cc);
-                    if (!s.endsWith(';')) s += ';';
-
-                    const isBlock = s.includes('display:block') || s.includes('display: block');
-                    const tag = isBlock ? 'div' : 'span';
+                    let content = match[1].replace(/\?\{[^}]+\}/g, '입력값');
+                    let s = match[3].replace(/&#41;/g, ')').trim();
                     
+                    // 너비가 큰 박스가 있는지 확인 (BGM 재생바 판별)
+                    if (s.includes('width') && parseInt(s.match(/width:\s*(\d+)px/)?.[1] || 0) > 100) hasWideBox = true;
+
+                    const tag = s.includes('display:block') ? 'div' : 'span';
                     result += `<${tag} style="${s}">${content}</${tag}>`;
                     lastIdx = regex.lastIndex;
                 }
-                
-                // 수식 후의 남은 일반 텍스트 처리
-                let after = p.substring(lastIdx);
-                if (after) result += `<span class="msg-text">${after}</span>`;
+                result += `<span class="msg-text">${p.substring(lastIdx)}</span>`;
 
-                return `<div class="msg-line">${result || p}</div>`;
+                // 💡 너비가 큰 수식은 scaled-wrapper로 감싸서 축소 처리
+                if (hasWideBox) {
+                    return `<div class="msg-line"><div class="scaled-wrapper">${result}</div></div>`;
+                }
+                return `<div class="msg-line">${result}</div>`;
             }).join('');
-            output.innerHTML = converted;
         }
 
-        function exportFormula() {
-            const formulaContent = input.value;
-            if (!formulaContent.trim()) { alert("내보낼 수식이 없습니다."); return; }
-            const blob = new Blob([formulaContent], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Macro_${new Date().toISOString().slice(0, 10)}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function copyRaw() { 
-            input.select(); 
-            document.execCommand('copy'); 
-            const btn = document.querySelector('.copy-raw-btn');
-            const originalText = btn.innerText;
-            btn.innerText = "복사 완료! ✅";
-            setTimeout(() => btn.innerText = originalText, 1500);
-        }
-
-        function clearAll() { 
-            if(confirm("모두 삭제할까요?")) { 
-                input.value = ''; 
-                output.innerHTML = ''; 
-                localStorage.removeItem('r20_macro_auto_save');
-            } 
-        }
+        function copyRaw() { input.select(); document.execCommand('copy'); }
+        function clearAll() { input.value = ''; output.innerHTML = ''; }
     </script>
 </body>
 </html>
